@@ -1,5 +1,5 @@
 .env
-/contracts/
+
 /node_modules/
 /artifacts/
 /cache/
