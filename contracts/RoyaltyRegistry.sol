@@ -904,7 +904,7 @@ contract Registry is ERC165, OwnableUpgradeable, IRegistry {
         amounts = new uint256[](bps.length);
         for (uint256 i = 0; i < bps.length; i++) {
             amounts[i] = (value * bps[i]) / 10000;
-        }
+        } 
         return amounts;
     }
 }

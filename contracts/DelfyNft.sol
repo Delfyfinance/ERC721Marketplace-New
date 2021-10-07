@@ -2348,7 +2348,7 @@ contract DelfyNFT is ERC721, Ownable {
         for (uint256 i = 0; i < values.length; i++) {
             total = total.add(values[i]);
         }
-        return total <= 1000000;
+        return total <= 10_000;
     }
 
     function getRoyalties(uint256 tokenId)
@@ -2357,16 +2357,14 @@ contract DelfyNFT is ERC721, Ownable {
         returns (address payable[] memory, uint256[] memory)
     {
         return (royalties[tokenId], royaltyFees[tokenId]);
-    }
+    } 
 
-    function mint(
+    function mint( 
         address to,
-        string calldata tokenURI,
-        address payable[] calldata royaltyAddrs,
-        uint256[] calldata royaltyShares
+        string calldata tokenURI
+        
     )
         external
-        isValidRoyalty(royaltyAddrs, royaltyShares)
         onlyMinter
         returns (uint256)
     {
@@ -2375,10 +2373,28 @@ contract DelfyNFT is ERC721, Ownable {
         _safeMint(to, newId);
         super._setTokenURI(newId, tokenURI);
         isRoyalty[_msgSender()][newId] = true;
+        emit RoyaltyUpdated(_msgSender(), newId);
+        return newId;
+    }
+    
+    
+    function mintWithRoyalty(address to,
+        string calldata tokenURI,
+        address payable[] calldata royaltyAddrs,
+        uint256[] calldata royaltyShares) external
+        isValidRoyalty(royaltyAddrs, royaltyShares)
+        onlyMinter
+        returns (uint256){
+            
+             _tokenIds.increment();
+        uint256 newId = _tokenIds.current();
+        _safeMint(to, newId);
+        super._setTokenURI(newId, tokenURI);
+        isRoyalty[_msgSender()][newId] = true;
         royalties[newId] = royaltyAddrs;
         royaltyFees[newId] = royaltyShares;
         emit RoyaltyUpdated(_msgSender(), newId);
-        return newId;
+        return newId;      
     }
 
     function burn(uint256 _tokenId) external onlyOwnerAndMinter(_tokenId) {

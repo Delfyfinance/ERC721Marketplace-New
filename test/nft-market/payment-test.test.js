@@ -152,7 +152,7 @@ describe("Nft marketplace payment", () => {
   it("support payment distribution for collaborative sales", async () => {
     await delfyNftToken
       .connect(other0)
-      .mint(
+      .mintWithRoyalty(
         other0.address,
         stallionMetadataHash,
         [other0.address],
@@ -201,11 +201,11 @@ describe("Nft marketplace payment", () => {
   it("support royalty distribution for multiple artists", async () => {
     await delfyNftToken
       .connect(other0)
-      .mint(
+      .mintWithRoyalty(
         other0.address,
         stallionMetadataHash,
         [other0.address, other1.address, other2.address],
-        [BigNumber.from(200), BigNumber.from(200), BigNumber.from(200)],
+        [BigNumber.from(200), BigNumber.from(200), BigNumber.from(200)], //6% in total
         overrides,
       );
     await delfyNftToken
@@ -239,6 +239,7 @@ describe("Nft marketplace payment", () => {
       1,
       expandToEthers(1.5).toString(10),
     );
+    console.log("RoyaltyPaid total: ", payment.total.toString())
     await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
       .to.emit(nftMktplace, "RoyaltyPaid")
       .withArgs(1, other0.address, payment.total.div(3), constants.AddressZero)
@@ -250,7 +251,7 @@ describe("Nft marketplace payment", () => {
   it("calc. refBonus and pay from platform share", async () => {
     await delfyNftToken
       .connect(other0)
-      .mint(
+      .mintWithRoyalty(
         other0.address,
         stallionMetadataHash,
         [other0.address],
