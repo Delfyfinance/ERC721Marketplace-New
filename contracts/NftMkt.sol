@@ -1127,7 +1127,7 @@ interface IERC721MarketPlace {
     );
 
     event OwnersPayment(uint256 id, address to, uint256 value);
-     event ServiceFees(uint256 auctionId, address paymtMethod, uint256 serviceAndRef);
+     event ServiceFees(address vault, uint256 auctionId, address paymtMethod, uint256 serviceAndRef);
     event RoyaltyPaid(
         uint256 auctionId,
         address to,
@@ -1244,7 +1244,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     address public pendingAdmin;
     uint256 public changeAdminDelay;
     address public coterieERC721;
-    address public platformVault; // for platform fees
+    address payable public platformVault; // for platform fees
     address public admin;
 
     uint256 public bidWindow = 24 hours;
@@ -1524,7 +1524,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         if (auction.paymentMethod == address(0)) {
             // Transfer total to platform vault, ref bonus will be claimable 
             EthTransferHelper(platformVault, platformAndRefBonus);
-            emit ServiceFees(_auctionId, auction.paymentMethod, platformAndRefBonus);
+            emit ServiceFees(platformVault, _auctionId, auction.paymentMethod, platformAndRefBonus);
             if (refCut > 0) {
                 
                 // EthTransferHelper(getRef[auction.id], refCut);
@@ -1545,7 +1545,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
                 platformVault,
                 platformAndRefBonus
             );
-            emit ServiceFees(_auctionId, auction.paymentMethod, platformAndRefBonus);
+            emit ServiceFees(platformVault, _auctionId, auction.paymentMethod, platformAndRefBonus);
             if (refCut > 0) {
                 
                 // We increase the amount of ref claimed and make withdrawable for multichain purpose
@@ -1932,7 +1932,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         platformCut = newCut;
     }
 
-    function updatePlatformVault(address feesReceiver) external onlyOwner {
+    function updatePlatformVault(address payable feesReceiver) external onlyOwner {
         platformVault = feesReceiver;
     }
 
