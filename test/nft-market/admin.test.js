@@ -67,7 +67,7 @@
 // const diamondMetadataHash = "QmdAQnWcLKEaZdCrQm8ssEcr7T3fkPK8Bj7NGwobd3Vmtx";
 
 // let nftMktplace,
-//   delfyNftToken,
+//   coterieNftToken,
 //   nftToken,
 //   paymentToken,
 //   royaltyRegistry,
@@ -81,24 +81,24 @@
 //   paymentToken = await PaymentToken.deploy("Basic Token", "Basic");
 //   const usPaymentToken = await ethers.getContractFactory("ERC20Token", wallet);
 //   unsupportedPmt = await usPaymentToken.deploy("Unsupported", "usp");
-//   const DelfyNftToken = await ethers.getContractFactory("DelfyNFT", wallet);
-//   delfyNftToken = await DelfyNftToken.deploy();
+//   const CoterieNftToken = await ethers.getContractFactory("CoterieNFT", wallet);
+//   coterieNftToken = await CoterieNftToken.deploy();
 //   const NftMktplace = await ethers.getContractFactory(
 //     "ERC721Marketplace",
 //     wallet,
 //   );
 //   nftMktplace = await NftMktplace.deploy(wallet.address);
-//   // add registry, delfyNft, and paymentMethods
+//   // add registry, coterieNft, and paymentMethods
 //   await nftMktplace.addSupportedpaymentMethods(
 //     [paymentToken.address],
 //     overrides,
 //   );
-//   await nftMktplace.addDelfyERC721(delfyNftToken.address, overrides);
+//   await nftMktplace.addCoterieERC721(coterieNftToken.address, overrides);
 //   await nftMktplace.addRoyaltyRegistry(royaltyRegistry.address, overrides);
-//   await delfyNftToken.addMinter(other0.address, overrides);
-//   await delfyNftToken.addMinter(other1.address, overrides);
-//   await delfyNftToken.addMinter(other2.address, overrides);
-//   await delfyNftToken.addMinter(other3.address, overrides);
+//   await coterieNftToken.addMinter(other0.address, overrides);
+//   await coterieNftToken.addMinter(other1.address, overrides);
+//   await coterieNftToken.addMinter(other2.address, overrides);
+//   await coterieNftToken.addMinter(other3.address, overrides);
 // });
 
 // const advanceBlock = async (times) => {
@@ -108,7 +108,7 @@
 // };
 // describe("Nft marketplace", () => {
 //   it("pause", async () => {
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mint(
 //         other0.address,
@@ -116,7 +116,7 @@
 
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
 //     await expect(
@@ -131,13 +131,13 @@
 //         .connect(other0)
 //         .createAuction(
 //           payTo,
-//           delfyNftToken.address,
+//           coterieNftToken.address,
 //           1,
 //           expandToEthers(1).toString(10),
 //           constants.AddressZero,
 //           overrides,
 //         ),
-//     ).to.be.revertedWith("DelfyMarket: only_when_not_paused");
+//     ).to.be.revertedWith("CoterieMarket: only_when_not_paused");
 //     expect(await nftMktplace.admin()).to.eq(wallet.address);
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
 //   });
@@ -160,9 +160,9 @@
 //     await nftMktplace.updatePlatformCut(10, overrides);
 //     expect(await nftMktplace.platformCut()).to.eq(10);
 //   });
-//   it("updates add delfy erc 721", async () => {
+//   it("updates add coterie erc 721", async () => {
 //     await expect(
-//       nftMktplace.connect(other0).addDelfyERC721(nftToken.address, overrides),
+//       nftMktplace.connect(other0).addCoterieERC721(nftToken.address, overrides),
 //     ).to.be.revertedWith("Ownable: caller is not the owner");
 //     expect(await nftMktplace.admin()).to.eq(wallet.address);
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
@@ -187,13 +187,13 @@
 //   });
 
 //   it("allows admin to cancel auction and refund bidder", async () => {
-//     await delfyNftToken.connect(other0).mint(
+//     await coterieNftToken.connect(other0).mint(
 //       other0.address,
 //       stallionMetadataHash,
-//        // 0.5%
+//       // 0.5%
 //       overrides,
 //     );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
 //     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -202,7 +202,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         1,
 //         expandToEthers(1).toString(10),
 //         constants.AddressZero,
@@ -220,7 +220,7 @@
 //     ).to.be.revertedWith("Ownable: caller is not the owner");
 //     await nftMktplace.connect(wallet).adminCancelAuction(1, overrides);
 //     const finalBalance = await provider.getBalance(other2.address);
-//     expect(await delfyNftToken.ownerOf(1)).to.eq(other0.address);
+//     expect(await coterieNftToken.ownerOf(1)).to.eq(other0.address);
 //     expect(await nftMktplace.admin()).to.eq(wallet.address);
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
 //     expect(finalBalance.toString()).to.eq(

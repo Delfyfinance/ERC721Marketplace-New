@@ -2282,7 +2282,7 @@ interface IERC721Royalties {
 }
 
 // import "@openzeppelin/contracts/access/AccessControl.sol";
-contract DelfyNFT is ERC721, Ownable {
+contract CoterieNFT is ERC721, Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
 
@@ -2292,6 +2292,7 @@ contract DelfyNFT is ERC721, Ownable {
     mapping(uint256 => address payable[]) private royalties;
     mapping(uint256 => uint256[]) private royaltyFees;
     mapping(address => mapping(uint256 => bool)) public isRoyalty; // mapping address to tokenId to get token creator
+    mapping(address=> uint256[]) private allMinted;
     bytes4 private constant _INTERFACE_ID_ERC721ROYALTIES =
         bytes4(keccak256("getRoyalties(uint256)"));
     Counters.Counter private _tokenIds;
@@ -2351,6 +2352,10 @@ contract DelfyNFT is ERC721, Ownable {
         return total <= 10_000;
     }
 
+    function getAllMinted (address __minter)external view returns (uint256[] memory){
+        return allMinted[__minter];
+    }
+
     function getRoyalties(uint256 tokenId)
         external
         view
@@ -2373,6 +2378,7 @@ contract DelfyNFT is ERC721, Ownable {
         _safeMint(to, newId);
         super._setTokenURI(newId, tokenURI);
         isRoyalty[_msgSender()][newId] = true;
+        allMinted[_msgSender()].push(newId);
         emit RoyaltyUpdated(_msgSender(), newId);
         return newId;
     }
@@ -2393,6 +2399,7 @@ contract DelfyNFT is ERC721, Ownable {
         isRoyalty[_msgSender()][newId] = true;
         royalties[newId] = royaltyAddrs;
         royaltyFees[newId] = royaltyShares;
+        allMinted[_msgSender()].push(newId);
         emit RoyaltyUpdated(_msgSender(), newId);
         return newId;      
     }

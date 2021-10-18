@@ -67,7 +67,7 @@
 // const diamondMetadataHash = "QmdAQnWcLKEaZdCrQm8ssEcr7T3fkPK8Bj7NGwobd3Vmtx";
 
 // let nftMktplace,
-//   delfyNftToken,
+//   coterieNftToken,
 //   nftToken,
 //   paymentToken,
 //   royaltyRegistry,
@@ -81,8 +81,8 @@
 //   paymentToken = await PaymentToken.deploy("Basic Token", "Basic");
 //   const usPaymentToken = await ethers.getContractFactory("ERC20Token", wallet);
 //   unsupportedPmt = await usPaymentToken.deploy("Unsupported", "usp");
-//   const DelfyNftToken = await ethers.getContractFactory("DelfyNFT", wallet);
-//   delfyNftToken = await DelfyNftToken.deploy();
+//   const CoterieNftToken = await ethers.getContractFactory("CoterieNFT", wallet);
+//   coterieNftToken = await CoterieNftToken.deploy();
 //   const NftMktplace = await ethers.getContractFactory(
 //     "ERC721Marketplace",
 //     wallet,
@@ -93,12 +93,12 @@
 //     [paymentToken.address],
 //     overrides,
 //   );
-//   await nftMktplace.addDelfyERC721(delfyNftToken.address, overrides);
+//   await nftMktplace.addCoterieERC721(coterieNftToken.address, overrides);
 //   await nftMktplace.addRoyaltyRegistry(royaltyRegistry.address, overrides);
-//   await delfyNftToken.addMinter(other0.address, overrides);
-//   await delfyNftToken.addMinter(other1.address, overrides);
-//   await delfyNftToken.addMinter(other2.address, overrides);
-//   await delfyNftToken.addMinter(other3.address, overrides);
+//   await coterieNftToken.addMinter(other0.address, overrides);
+//   await coterieNftToken.addMinter(other1.address, overrides);
+//   await coterieNftToken.addMinter(other2.address, overrides);
+//   await coterieNftToken.addMinter(other3.address, overrides);
 // });
 
 // const advanceBlock = async (times) => {
@@ -109,16 +109,16 @@
 // describe("Nft marketplace", () => {
 //   it("sets the basics", async () => {
 //     expect(await nftMktplace.platformVault()).to.eq(wallet.address);
-//     expect(await nftMktplace.delfyERC721()).to.eq(delfyNftToken.address);
+//     expect(await nftMktplace.coterieERC721()).to.eq(coterieNftToken.address);
 //     expect(await nftMktplace.ROYALTY_REGISTRY()).to.eq(royaltyRegistry.address);
 //     expect(await nftMktplace.isSupportedPaymentMethod(paymentToken.address)).to
 //       .be.true;
-//     expect(await delfyNftToken.isMinter(other0.address)).to.be.true;
+//     expect(await coterieNftToken.isMinter(other0.address)).to.be.true;
 //     expect(await nftMktplace.admin()).to.eq(wallet.address);
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
 //   });
 //   it("create auction with valid args", async () => {
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -127,7 +127,7 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -136,7 +136,7 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -145,13 +145,13 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 2, overrides);
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 3, overrides);
 //     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -159,7 +159,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         1,
 //         expandToEthers(1).toString(10),
 //         constants.AddressZero,
@@ -168,31 +168,31 @@
 //     expect((await nftMktplace.getOwnerAuctions(other0.address)).length).to.eq(
 //       1,
 //     );
-//     expect(await delfyNftToken.ownerOf(1)).to.eq(nftMktplace.address);
+//     expect(await coterieNftToken.ownerOf(1)).to.eq(nftMktplace.address);
 //     await expect(
 //       nftMktplace
 //         .connect(other0)
 //         .createAuction(
 //           payTo,
-//           delfyNftToken.address,
+//           coterieNftToken.address,
 //           2,
 //           expandToEthers(1).toString(10),
 //           unsupportedPmt.address,
 //           overrides,
 //         ),
-//     ).to.be.revertedWith("DelfyMarket: only supported payment methods");
+//     ).to.be.revertedWith("CoterieMarket: only supported payment methods");
 //     await expect(
 //       nftMktplace
 //         .connect(other0)
 //         .createAuction(
 //           [{ to: other0.address, percent: "1100" }],
-//           delfyNftToken.address,
+//           coterieNftToken.address,
 //           2,
 //           expandToEthers(1).toString(10),
 //           unsupportedPmt.address,
 //           overrides,
 //         ),
-//     ).to.be.revertedWith("DelfyMarket: invalid payment distribution");
+//     ).to.be.revertedWith("CoterieMarket: invalid payment distribution");
 //     await expect(
 //       nftMktplace.connect(other0).createAuction(
 //         [
@@ -208,18 +208,18 @@
 //           { to: other8.address, percent: "10" },
 //           { to: other0.address, percent: "10" },
 //         ],
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         2,
 //         expandToEthers(1).toString(10),
 //         paymentToken.address,
 //         overrides,
 //       ),
-//     ).to.be.revertedWith("DelfyMarket: invalid payto length");
+//     ).to.be.revertedWith("CoterieMarket: invalid payto length");
 //     expect(await nftMktplace.admin()).to.eq(wallet.address);
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
 //   });
 //   it("allow bid with eth, revert low bid value after the first bid and overrides lower bids", async () => {
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -228,7 +228,7 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
 //     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -236,7 +236,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         1,
 //         expandToEthers(1).toString(10),
 //         constants.AddressZero,
@@ -258,7 +258,7 @@
 //           ...overrides,
 //           value: expandToEthers(1.51).toString(10),
 //         }),
-//     ).to.be.revertedWith("DelfyMarket: Bid_value_must_be_>current_bid_value");
+//     ).to.be.revertedWith("CoterieMarket: Bid_value_must_be_>current_bid_value");
 //     const balance = await provider.getBalance(other2.address);
 //     await nftMktplace
 //       .connect(other3)
@@ -294,7 +294,7 @@
 //     await paymentToken
 //       .connect(other2)
 //       .approve(nftMktplace.address, expandToEthers(50).toString(10), overrides);
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -303,7 +303,7 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
 //     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -311,7 +311,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         1,
 //         expandToEthers(1).toString(10),
 //         paymentToken.address,
@@ -331,7 +331,7 @@
 //         .makeBid(1, expandToEthers(1.51).toString(10), {
 //           ...overrides,
 //         }),
-//     ).to.be.revertedWith("DelfyMarket: Bid_value_must_be_>current_bid_value");
+//     ).to.be.revertedWith("CoterieMarket: Bid_value_must_be_>current_bid_value");
 //     const balance = await paymentToken.balanceOf(other1.address);
 //     await nftMktplace
 //       .connect(other2)
@@ -349,7 +349,7 @@
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
 //   });
 //   it("close bids after due 24 hours eth", async () => {
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -358,7 +358,7 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
 //     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -366,7 +366,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         1,
 //         expandToEthers(1).toString(10),
 //         constants.AddressZero,
@@ -383,15 +383,15 @@
 //     await advanceTime(provider, DELAY());
 //     await expect(
 //       nftMktplace.connect(other3).closeAuction(1, overrides),
-//     ).to.be.revertedWith("DelfyMarket: only_auction_owner_and_lastBidder");
+//     ).to.be.revertedWith("CoterieMarket: only_auction_owner_and_lastBidder");
 //     await nftMktplace.connect(other2).closeAuction(1, overrides);
 //     const pay = await nftMktplace.viewRoyaltyPayments(
-//       delfyNftToken.address,
+//       coterieNftToken.address,
 //       1,
 //       expandToEthers(1.5).toString(10),
 //     );
 //     const ownerPay = await nftMktplace.getOwnerPayment(
-//       delfyNftToken.address,
+//       coterieNftToken.address,
 //       1,
 //       expandToEthers(1.5).toString(10),
 //     );
@@ -402,7 +402,7 @@
 //         pay[2].toString(),
 //       ).toString(10),
 //     );
-//     expect(await delfyNftToken.ownerOf(1)).to.eq(other2.address);
+//     expect(await coterieNftToken.ownerOf(1)).to.eq(other2.address);
 //     revertTime(provider);
 //     expect(await nftMktplace.admin()).to.eq(wallet.address);
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
@@ -416,7 +416,7 @@
 //     await paymentToken
 //       .connect(other2)
 //       .approve(nftMktplace.address, expandToEthers(50).toString(10), overrides);
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -425,7 +425,7 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
 //     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -433,7 +433,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         1,
 //         expandToEthers(1).toString(10),
 //         paymentToken.address,
@@ -449,12 +449,12 @@
 //     const balance = await paymentToken.balanceOf(other0.address);
 //     await nftMktplace.connect(other0).closeAuction(1, overrides);
 //     const pay = await nftMktplace.viewRoyaltyPayments(
-//       delfyNftToken.address,
+//       coterieNftToken.address,
 //       1,
 //       expandToEthers(1.5).toString(10),
 //     );
 //     const ownerPay = await nftMktplace.getOwnerPayment(
-//       delfyNftToken.address,
+//       coterieNftToken.address,
 //       1,
 //       expandToEthers(1.5).toString(10),
 //     );
@@ -465,13 +465,13 @@
 //         pay[2].toString(),
 //       ).toString(10),
 //     );
-//     expect(await delfyNftToken.ownerOf(1)).to.eq(other2.address);
+//     expect(await coterieNftToken.ownerOf(1)).to.eq(other2.address);
 //     revertTime(provider);
 //     expect(await nftMktplace.admin()).to.eq(wallet.address);
 //     expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
 //   });
 //   it("allow owner to modify auction", async () => {
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -480,10 +480,10 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 1, overrides);
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .mintWithRoyalty(
 //         other0.address,
@@ -492,7 +492,7 @@
 //         [BigNumber.from(50)],
 //         overrides,
 //       );
-//     await delfyNftToken
+//     await coterieNftToken
 //       .connect(other0)
 //       .approve(nftMktplace.address, 2, overrides);
 //     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -500,7 +500,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         1,
 //         expandToEthers(1).toString(10),
 //         constants.AddressZero,
@@ -510,7 +510,7 @@
 //       .connect(other0)
 //       .createAuction(
 //         payTo,
-//         delfyNftToken.address,
+//         coterieNftToken.address,
 //         2,
 //         expandToEthers(1).toString(10),
 //         constants.AddressZero,
@@ -524,15 +524,15 @@
 //       nftMktplace
 //         .connect(other0)
 //         .updatePaymentMethod(1, paymentToken.address, overrides),
-//     ).to.be.revertedWith("DelfyMarket: only_before_first_bid");
+//     ).to.be.revertedWith("CoterieMarket: only_before_first_bid");
 //     await expect(
 //       nftMktplace
 //         .connect(other0)
 //         .updateBasePrice(1, expandToEthers(1.5).toString(10), overrides),
-//     ).to.be.revertedWith("DelfyMarket: only_before_first_bid");
+//     ).to.be.revertedWith("CoterieMarket: only_before_first_bid");
 //     await expect(
 //       nftMktplace.connect(other0).cancelAuction(1, overrides),
-//     ).to.be.revertedWith("DelfyMarket: only_before_first_bid");
+//     ).to.be.revertedWith("CoterieMarket: only_before_first_bid");
 //     // modify second bid and cancel
 //     await nftMktplace
 //       .connect(other0)

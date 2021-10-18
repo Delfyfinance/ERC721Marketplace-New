@@ -1,4 +1,3 @@
-// File: node_modules\@openzeppelin\contracts\utils\Context.sol
 
 // SPDX-License-Identifier: MIT
 
@@ -984,9 +983,9 @@ interface IERC721Enumerable is IERC721 {
     function tokenByIndex(uint256 index) external view returns (uint256);
 }
 
-// File: contracts\interfaces\IDelfyERC721.sol
+// File: contracts\interfaces\ICoterieERC721.sol
 
-interface IDelfyERC721 {
+interface ICoterieERC721 {
     function referredBy(address) external returns (address);
 
     function isMinter(address) external returns (bool);
@@ -1016,6 +1015,23 @@ library Counters {
     }
 }
 
+interface IERC721Metadata is IERC721 {
+    /**
+     * @dev Returns the token collection name.
+     */
+    function name() external view returns (string memory);
+
+    /**
+     * @dev Returns the token collection symbol.
+     */
+    function symbol() external view returns (string memory);
+
+    /**
+     * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.
+     */
+    function tokenURI(uint256 tokenId) external view returns (string memory);
+}
+
 // File: contracts\interfaces\IERC721MarketPlace.sol
 
 pragma solidity >=0.6.12;
@@ -1029,7 +1045,7 @@ interface IERC721MarketPlace {
     struct Auction {
         address payable owner;
         address token;
-        // address currentBidder;
+        address buyer;
         uint256 tokenId;
         uint256 basePrice;
         // uint256 lastBidVal;
@@ -1070,16 +1086,14 @@ interface IERC721MarketPlace {
         external
         returns (bool);
 
-    function getOwnerTokenIds(address owner, address _token)
-        external
-        view
-        returns (uint256[] memory ownerTokens);
+    
 
     event AuctionCreated(
         address owner,
         uint256 id,
         address token,
         uint256 tokenId,
+        string tokenUri,
         uint256 _basePrice,
         address paymentMethod
     );
@@ -1112,14 +1126,15 @@ interface IERC721MarketPlace {
         uint256 newFees
     );
 
-    event SplitPayment(uint256 id, address to, uint256 value);
+    event OwnersPayment(uint256 id, address to, uint256 value);
+     event ServiceFees(uint256 auctionId, address paymtMethod, uint256 serviceAndRef);
     event RoyaltyPaid(
         uint256 auctionId,
         address to,
         uint256 value,
         address paymentMethod
     );
-    event ReferralPaid(
+    event ReferralDue(
         uint256 auctionId,
         address to,
         uint256 value,
@@ -1195,6 +1210,8 @@ interface IRegistry is IERC165 {
         external;
 }
 
+
+
 pragma experimental ABIEncoderV2;
 
 // import "@openzeppelin/contracts/utils/Pausable.sol";
@@ -1208,38 +1225,41 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     mapping(uint256 => Auction) public getAuction; // get auction by ID
 
     mapping(address => mapping(uint256 => uint256)) public creatorCut; // check if secondary fees is applicable
-    mapping(address => bool) public isSupportedPaymentMethod; // delfy native tokens
+    mapping(address => bool) public isSupportedPaymentMethod; // Coterie native tokens
     mapping(address => uint256[]) ownerAuctions;
     mapping(address => bool) public isMinter;
     mapping(address => mapping(address => uint256)) public getRefBonusPaidCount; // this can be used to fetch number of referral bonus paid
-    mapping(uint256 => address) public getRef; // get ref address from auction Id it calls to the delfy contract to fetch the content creator referredBy
+    mapping(uint256 => address) public getRef; // get ref address from auction Id it calls to the CoterieERC721 contract to fetch the content creator referredBy
     mapping(uint256 => PaymentsTo[]) public payTo;
-    // mapping(uint256 => bool) public SUPPORT_INTERFACE_ID_ERC721ROYALTIES;
-    mapping(uint256 => Bid[]) public getBids;
+    mapping(uint256 => Bid[])  getBids;
 
     uint256[] auctionIds;
     address[] supportedPaymentMethods;
 
-    // bytes4 private constant _INTERFACE_ID_ERC721ROYALTIES = 0x46e80720;
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
-    address public pendingAdmin;
-    uint256 public changeAdminDelay;
     uint256 public constant delay = 172_800;
 
-    IRegistry public ROYALTY_REGISTRY;
     Counters.Counter private _auctionIds;
-    address public delfyERC721;
+    IRegistry public ROYALTY_REGISTRY;
+    address public pendingAdmin;
+    uint256 public changeAdminDelay;
+    address public coterieERC721;
     address public platformVault; // for platform fees
     address public admin;
 
     uint256 public bidWindow = 24 hours;
     uint256 public bidExtension = 20 minutes;
 
-    uint256 public platformCut = 50;
+    uint256 public platformCut = 25;
     uint256 public refBonus = 5;
     uint256 public refBonusLimit = 5;
+    uint256 public increaseBidFactor = 10;
 
     bool public paused = false;
+    bool public givingRefBonus = true;
+    
+    
+    /*********************** Modifier Functions  ************************/
 
     modifier onlyOwner() {
         require(_msgSender() == admin, "Ownable: caller is not the owner");
@@ -1247,7 +1267,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     }
 
     modifier whenNotPaused() {
-        require(paused == false, "DelfyMarket: only_when_not_paused");
+        require(paused == false, "CoterieMarket: only_when_not_paused");
         _;
     }
 
@@ -1255,7 +1275,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         Auction storage auction = getAuction[auctionId];
         require(
             _msgSender() == auction.owner,
-            "DelfyMarket: only_auction_owner"
+            "CoterieMarket: only_auction_owner"
         );
         _;
     }
@@ -1263,18 +1283,15 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         Bid [] storage bids = getBids[auctionId];
         require(
             bids.length == 0 ,
-            "DelfyMarket: only_before_first_bid"
+            "CoterieMarket: only_before_first_bid"
         );
         _;
     }
 
-    function getOwnerAuctions(address _creator)
-        external
-        view
-        returns (uint256[] memory)
-    {
-        return ownerAuctions[_creator];
-    }
+    
+    
+    
+     
 
     constructor(address payable vault) public {
         isSupportedPaymentMethod[address(0)] = true;
@@ -1283,31 +1300,11 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         emit AdminTransferred(address(0), _msgSender());
     }
     
-    function getAuctionBids (uint256 auctionId) external view returns(Bid[] memory){
-        return getBids[auctionId];
-    }
+    
 
-    function getPaymentTo(uint256 auctionId)
-        external
-        view
-        returns (PaymentsTo[] memory)
-    {
-        return payTo[auctionId];
-    }
-
-    function validatePayTo(PaymentsTo[] memory _payTo)
-        internal
-        pure
-        returns (bool)
-    {
-        require(_payTo.length <= 10, "DelfyMarket: invalid payto length");
-        uint256 total;
-        for (uint256 i; i < _payTo.length; i++) {
-            total += _payTo[i].percent;
-        }
-        return total == 1000;
-    }
-
+   
+    
+    /*********************** Auction Functions  ************************/
     function createAuction(
         PaymentsTo[] memory paymentsTo,
         address _token,
@@ -1319,17 +1316,17 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         Auction storage auction;
         require(
             validatePayTo(paymentsTo),
-            "DelfyMarket: invalid payment distribution"
+            "CoterieMarket: invalid payment distribution"
         );
         require(
             isSupportedPaymentMethod[_paymentMethod],
-            "DelfyMarket: only supported payment methods"
+            "CoterieMarket: only supported payment methods"
         );
         address payable _owner = payable(token.ownerOf(_tokenId));
         token.safeTransferFrom(_owner, address(this), _tokenId);
         require(
             token.ownerOf(_tokenId) == address(this),
-            "DelfyMarket: Transfer Failed"
+            "CoterieMarket: Transfer Failed"
         );
         _auctionIds.increment();
         auction.id = _auctionIds.current();
@@ -1351,27 +1348,24 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         }
 
         if (
-            _token == delfyERC721 && IDelfyERC721(delfyERC721).isMinter(_owner)
+            _token == coterieERC721 && ICoterieERC721(coterieERC721).isMinter(_owner)
         ) {
             isMinter[_owner] = true;
-            getRef[auction.id] = IDelfyERC721(_token).referredBy(auction.owner);
+            getRef[auction.id] = ICoterieERC721(_token).referredBy(auction.owner);
         }
-
+        string memory tokenUri = IERC721Metadata(_token).tokenURI(_tokenId);
         emit AuctionCreated(
             _msgSender(),
             auction.id,
             auction.token,
             auction.tokenId,
+            tokenUri,
             auction.basePrice,
             _paymentMethod
         );
     }
-
-    receive() external payable {
-        revert("DelfyMarket: You have to make purchase!");
-    }
-
-    function makeBid(uint256 _id, uint256 bidValue)
+    
+     function makeBid(uint256 _id, uint256 bidValue)
         external
         payable
         override
@@ -1385,12 +1379,12 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
             if (_auction.paymentMethod == address(0)) {
                 require(
                     msg.value >= _auction.basePrice,
-                    "DelfyMarket: Bid_value_must_be_>current_bid_value"
+                    "CoterieMarket: Bid_value_must_be_>current_bid_value"
                 );
             } else if (_auction.paymentMethod != address(0)) {
                 require(
                     bidValue >= _auction.basePrice,
-                    "DelfyMarket: Bid_value_must_be_>current_bid_value"
+                    "CoterieMarket: Bid_value_must_be_>current_bid_value"
                 );
 
                 IERC20(_auction.paymentMethod).safeTransferFrom(
@@ -1406,18 +1400,18 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
                 require(
                     msg.value >
                         bids[bids.length - 1].currentBid.add(
-                            getPercent(bids[bids.length - 1].currentBid, 10)
+                            getPercent(bids[bids.length - 1].currentBid, increaseBidFactor)
                         ),
-                    "DelfyMarket: Bid_value_must_be_>current_bid_value"
+                    "CoterieMarket: Bid_value_must_be_>current_bid_value"
                 );
                 EthTransferHelper(bids[bids.length - 1].bidder, bids[bids.length - 1].currentBid);
             } else {
                 require(
                     bidValue >=
                         bids[bids.length - 1].currentBid.add(
-                            getPercent(bids[bids.length - 1].currentBid, 10)
+                            getPercent(bids[bids.length - 1].currentBid, increaseBidFactor)
                         ),
-                    "DelfyMarket: Bid_value_must_be_>current_bid_value"
+                    "CoterieMarket: Bid_value_must_be_>current_bid_value"
                 );
                 IERC20(_auction.paymentMethod).safeTransferFrom(
                     _msgSender(),
@@ -1438,12 +1432,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
                 _auction.closedAt = _auction.closedAt.add(bidExtension);
             }
         }
-        // _auction.currentBidder = _msgSender();
-        // _auction.lastBidVal = bidValue;
-        /*uint256 auctionId;
-        uint256 currentBid;
-        address bidder;
-        uint256 createdAt;*/
+        
         Bid memory bid = Bid({
             createdAt: _blocktime(),
             currentBid : bidValue,
@@ -1462,14 +1451,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         );
     }
 
-    function _blocktime() internal view returns (uint256) {
-        return block.timestamp;
-    }
-
-    function _msgSender() internal view returns (address payable) {
-        return msg.sender;
-    }
-
+    
     function updatePaymentMethod(uint256 auctionId, address newPaymentMtd)
         external
         whenNotPaused
@@ -1504,57 +1486,8 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         return true;
     }
 
-    function viewRoyaltyPayments(
-        address auctionToken,
-        uint256 auctionTokenId,
-        uint256 currentBidValue
-    )
-        public
-        view
-        returns (
-            address payable[] memory recipients,
-            uint256[] memory amounts,
-            uint256 total
-        )
-    {
-        (recipients, amounts) = ROYALTY_REGISTRY.getRoyalty(
-            auctionToken,
-            auctionTokenId,
-            currentBidValue
-        );
-        for (uint256 i = 0; i < amounts.length; i++) {
-            total = total.add(amounts[i]);
-        }
-        return (recipients, amounts, total);
-    }
 
-    function processRoyaltyPayments(
-        uint256 auctionId,
-        address auctionToken,
-        uint256 auctionTokenId,
-        uint256 currentBidValue,
-        address paymentMethod
-    ) internal {
-        (
-            address payable[] memory recipients,
-            uint256[] memory amounts,
-
-        ) = viewRoyaltyPayments(auctionToken, auctionTokenId, currentBidValue);
-        for (uint256 i = 0; i < recipients.length; i++) {
-            if (paymentMethod == address(0)) {
-                EthTransferHelper(recipients[i], amounts[i]);
-            } else {
-                ERC20TransferHelper(paymentMethod, recipients[i], amounts[i]);
-            }
-
-            emit RoyaltyPaid(
-                auctionId,
-                recipients[i],
-                amounts[i],
-                paymentMethod
-            );
-        }
-    }
+  
 
     function closeAuction(uint256 _auctionId)
         public
@@ -1569,34 +1502,37 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         require(
             _msgSender() == auction.owner ||
                 _msgSender() == bids[bids.length - 1].bidder,
-            "DelfyMarket: only_auction_owner_and_lastBidder"
+            "CoterieMarket: only_auction_owner_and_lastBidder"
         );
         require(
             bids[bids.length - 1].currentBid >= auction.basePrice,
-            "DelfyMarket: close_sale_by_cancel_auction"
+            "CoterieMarket: close_sale_by_cancel_auction"
         );
         require(
             _blocktime() >= auction.closedAt,
-            "DelfyMarket: Auction_not_closed"
+            "CoterieMarket: Auction_not_closed"
         );
 
-        // get owner payment value and distribut accordingly
+        
 
-        // Royalty storage royalty = getRoyalty[_auctionId];
-
-        (uint256 _platformCut, uint256 refCut, uint256 total) = getPlatformCut(
+        (, uint256 refCut, uint256 platformAndRefBonus) = getPlatformCut(
             _auctionId,
             auction.owner,
            bids[bids.length - 1].currentBid
         );
+        
         if (auction.paymentMethod == address(0)) {
-            EthTransferHelper(platformVault, _platformCut);
+            // Transfer total to platform vault, ref bonus will be claimable 
+            EthTransferHelper(platformVault, platformAndRefBonus);
+            emit ServiceFees(_auctionId, auction.paymentMethod, platformAndRefBonus);
             if (refCut > 0) {
-                // send referral bonus
-                EthTransferHelper(getRef[auction.id], refCut);
+                
+                // EthTransferHelper(getRef[auction.id], refCut);
+                // We increase the amount of ref claimed and make withdrawable for multichain purpose
+                
                 getRefBonusPaidCount[getRef[auction.id]][auction.owner]++;
                 getRefBonusPaidCount[auction.owner][getRef[auction.id]]++;
-                emit ReferralPaid(
+                emit ReferralDue(
                     _auctionId,
                     getRef[auction.id],
                     refCut,
@@ -1607,19 +1543,21 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
             ERC20TransferHelper(
                 auction.paymentMethod,
                 platformVault,
-                _platformCut
+                platformAndRefBonus
             );
-
+            emit ServiceFees(_auctionId, auction.paymentMethod, platformAndRefBonus);
             if (refCut > 0) {
-                // send referral bonus
-                ERC20TransferHelper(
-                    auction.paymentMethod,
-                    getRef[auction.id],
-                    refCut
-                );
+                
+                // We increase the amount of ref claimed and make withdrawable for multichain purpose
+                // ERC20TransferHelper(
+                //     auction.paymentMethod,
+                //     getRef[auction.id],
+                //     refCut
+                // );
+                
                 getRefBonusPaidCount[getRef[auction.id]][auction.owner]++;
                 getRefBonusPaidCount[auction.owner][getRef[auction.id]]++;
-                emit ReferralPaid(
+                emit ReferralDue(
                     _auctionId,
                     getRef[auction.id],
                     refCut,
@@ -1646,6 +1584,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
             bids[bids.length - 1].bidder,
             auction.tokenId
         );
+        auction.buyer = bids[bids.length - 1].bidder;
         auction.status = Status.SOLD;
 
         emit Executed(
@@ -1653,36 +1592,12 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
             auction.token,
             auction.tokenId,
             ownerPayment,
-            total
+            platformAndRefBonus
         );
         return true;
     }
 
-    // distribute payment to collaborators
-    function paymentSpliter(
-        uint256 id,
-        address paymentMtd,
-        uint256 value
-    ) internal {
-        uint256 totalVal = value;
-        if (value > 0)
-            for (uint256 i = 0; i < payTo[id].length; i++) {
-                uint256 val = 0;
-                if (i < payTo[id].length - 1) {
-                    val = getFractionPercent(value, payTo[id][i].percent);
-                    totalVal = totalVal.sub(val);
-                } else {
-                    val = totalVal;
-                }
-                if (paymentMtd == address(0)) {
-                    EthTransferHelper(payTo[id][i].to, val);
-                    emit SplitPayment(id, payTo[id][i].to, val);
-                } else {
-                    ERC20TransferHelper(paymentMtd, payTo[id][i].to, val);
-                    emit SplitPayment(id, payTo[id][i].to, val);
-                }
-            }
-    }
+    
 
     function updateBasePrice(uint256 _auctionId, uint256 _newBasePrice)
         external
@@ -1709,21 +1624,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         emit OwnerChangedAddress(auctionId, oldAddress, newOwner);
     }
 
-    function getPercent(uint256 val, uint256 percentage)
-        internal
-        pure
-        returns (uint256)
-    {
-        return val.mul(percentage).div(100);
-    }
-
-    function getFractionPercent(uint256 amount, uint256 fraction)
-        internal
-        pure
-        returns (uint256)
-    {
-        return amount.mul(fraction).div(1000);
-    }
+     /*********************** Payment Helper Functions  ************************/
 
     function getOwnerPayment(
         address token,
@@ -1758,7 +1659,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
             auctionOwner
         ];
 
-        if (isMinter[auctionOwner] && refCount < refBonusLimit) {
+        if (givingRefBonus && isMinter[auctionOwner] && refCount < refBonusLimit) {
             refCut = getFractionPercent(amount, refBonus);
             cutValue = getFractionPercent(amount, platformCut).sub(refCut);
         } else {
@@ -1767,6 +1668,87 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         _total = cutValue.add(refCut);
         return (cutValue, refCut, _total);
     }
+    
+    
+    function viewRoyaltyPayments(
+        address auctionToken,
+        uint256 auctionTokenId,
+        uint256 currentBidValue
+    )
+        public
+        view
+        returns (
+            address payable[] memory recipients,
+            uint256[] memory amounts,
+            uint256 total
+        )
+    {
+        (recipients, amounts) = ROYALTY_REGISTRY.getRoyalty(
+            auctionToken,
+            auctionTokenId,
+            currentBidValue
+        );
+        for (uint256 i = 0; i < amounts.length; i++) {
+            total = total.add(amounts[i]);
+        }
+        return (recipients, amounts, total);
+    }
+    
+    // distribute payment to collaborators
+    function paymentSpliter(
+        uint256 id,
+        address paymentMtd,
+        uint256 value
+    ) internal {
+        uint256 totalVal = value;
+        if (value > 0)
+            for (uint256 i = 0; i < payTo[id].length; i++) {
+                uint256 val = 0;
+                if (i < payTo[id].length - 1) {
+                    val = getFractionPercent(value, payTo[id][i].percent);
+                    totalVal = totalVal.sub(val);
+                } else {
+                    val = totalVal;
+                }
+                if (paymentMtd == address(0)) {
+                    EthTransferHelper(payTo[id][i].to, val);
+                    emit OwnersPayment(id, payTo[id][i].to, val);
+                } else {
+                    ERC20TransferHelper(paymentMtd, payTo[id][i].to, val);
+                    emit OwnersPayment(id, payTo[id][i].to, val);
+                }
+            }
+    }
+    
+     function processRoyaltyPayments(
+        uint256 auctionId,
+        address auctionToken,
+        uint256 auctionTokenId,
+        uint256 currentBidValue,
+        address paymentMethod
+    ) internal {
+        (
+            address payable[] memory recipients,
+            uint256[] memory amounts,
+
+        ) = viewRoyaltyPayments(auctionToken, auctionTokenId, currentBidValue);
+        for (uint256 i = 0; i < recipients.length; i++) {
+            if (paymentMethod == address(0)) {
+                EthTransferHelper(recipients[i], amounts[i]);
+            } else {
+                ERC20TransferHelper(paymentMethod, recipients[i], amounts[i]);
+            }
+
+            emit RoyaltyPaid(
+                auctionId,
+                recipients[i],
+                amounts[i],
+                paymentMethod
+            );
+        }
+    }
+    
+     /*********************** Utils Functions  ************************/
 
     function ERC20TransferHelper(
         address token,
@@ -1780,7 +1762,46 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         (bool success, ) = to.call{value: amount}("");
         require(success, "ETH_transfer_failed");
     }
+    
+    function getPercent(uint256 val, uint256 percentage)
+        internal
+        pure
+        returns (uint256)
+    {
+        return val.mul(percentage).div(100);
+    }
 
+    function getFractionPercent(uint256 amount, uint256 fraction)
+        internal
+        pure
+        returns (uint256)
+    {
+        return amount.mul(fraction).div(1000);
+    }
+    
+     function _blocktime() internal view returns (uint256) {
+        return block.timestamp;
+    }
+
+    function _msgSender() internal view returns (address payable) {
+        return msg.sender;
+    }
+    
+     function validatePayTo(PaymentsTo[] memory _payTo)
+        internal
+        pure
+        returns (bool)
+    {
+        require(_payTo.length <= 10, "CoterieMarket: invalid payto length");
+        uint256 total;
+        for (uint256 i; i < _payTo.length; i++) {
+            total += _payTo[i].percent;
+        }
+        return total == 1000;
+    }
+
+ 
+    /*********************** View Functions  ************************/
     function onERC721Received(
         address,
         address,
@@ -1789,8 +1810,30 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     ) external pure returns (bytes4) {
         return _ERC721_RECEIVED;
     }
- 
-    /*********************** View Functions  ************************/
+    
+    function getAuctionBids (uint256 auctionId) external view returns(Bid[] memory){
+        return getBids[auctionId];
+    }
+
+    function getPaymentTo(uint256 auctionId)
+        external
+        view
+        returns (PaymentsTo[] memory)
+    {
+        return payTo[auctionId];
+    }
+    
+    receive() external payable {
+        revert("CoterieMarket: You have to make purchase!");
+    }
+    
+    function getOwnerAuctions(address _creator)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return ownerAuctions[_creator];
+    }
 
     function getAuctionIds() external view returns (uint256[] memory) {
         return auctionIds;
@@ -1799,7 +1842,6 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     function getOwnerTokenIds(address _owner, address _token)
         public
         view
-        override
         returns (uint256[] memory ownerTokens)
     {
         IERC721Enumerable token = IERC721Enumerable(_token);
@@ -1822,6 +1864,10 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     }
 
     /****************************** only admin Restricted Functions **************************************/
+    
+    function updateIncreaseBidFactor(uint256 factor) external onlyOwner{
+        increaseBidFactor = factor;
+    }
 
     function addRoyaltyRegistry(address royaltyRegisty) external onlyOwner {
         ROYALTY_REGISTRY = IRegistry(royaltyRegisty);
@@ -1834,6 +1880,10 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     function updateBidWindow(uint256 _bidW) external onlyOwner {
         bidWindow = _bidW;
     }
+    
+    function toggleGiveRef() external onlyOwner{
+        givingRefBonus = givingRefBonus == true? false : true;
+    } 
 
     function pause() external onlyOwner {
         paused = true;
@@ -1873,9 +1923,9 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         }
     }
 
-    function addDelfyERC721(address ERC721Token) external onlyOwner {
+    function addCoterieERC721(address ERC721Token) external onlyOwner {
         require(ERC721Token != address(0), "address_0");
-        delfyERC721 = ERC721Token;
+        coterieERC721 = ERC721Token;
     }
 
     function updatePlatformCut(uint256 newCut) external onlyOwner {
@@ -1904,7 +1954,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         if (changeAdminDelay > 0 && pendingAdmin != address(0)) {
             require(
                 _blocktime() > changeAdminDelay,
-                "DelfyERC20: owner apply too early"
+                "CoterieMarket: owner apply too early"
             );
             admin = pendingAdmin;
             changeAdminDelay = 0;
@@ -1912,4 +1962,6 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         }
         emit AcceptPendingAdmin(_msgSender(), admin);
     }
+    
+    
 }

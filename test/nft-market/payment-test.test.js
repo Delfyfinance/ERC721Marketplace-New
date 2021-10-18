@@ -67,7 +67,7 @@ const albinoGorillaMetadataHash =
 const diamondMetadataHash = "QmdAQnWcLKEaZdCrQm8ssEcr7T3fkPK8Bj7NGwobd3Vmtx";
 
 let nftMktplace,
-  delfyNftToken,
+  coterieNftToken,
   nftToken,
   paymentToken,
   royaltyRegistry,
@@ -81,24 +81,24 @@ beforeEach(async () => {
   paymentToken = await PaymentToken.deploy("Basic Token", "Basic");
   const usPaymentToken = await ethers.getContractFactory("ERC20Token", wallet);
   unsupportedPmt = await usPaymentToken.deploy("Unsupported", "usp");
-  const DelfyNftToken = await ethers.getContractFactory("DelfyNFT", wallet);
-  delfyNftToken = await DelfyNftToken.deploy();
+  const CoterieNftToken = await ethers.getContractFactory("CoterieNFT", wallet);
+  coterieNftToken = await CoterieNftToken.deploy();
   const NftMktplace = await ethers.getContractFactory(
     "ERC721Marketplace",
     wallet,
   );
   nftMktplace = await NftMktplace.deploy(wallet.address);
-  // add registry, delfyNft, and paymentMethods
+  // add registry, coterieERC721, and paymentMethods
   await nftMktplace.addSupportedpaymentMethods(
     [paymentToken.address],
     overrides,
   );
-  await nftMktplace.addDelfyERC721(delfyNftToken.address, overrides);
+  await nftMktplace.addCoterieERC721(coterieNftToken.address, overrides);
   await nftMktplace.addRoyaltyRegistry(royaltyRegistry.address, overrides);
-  await delfyNftToken.addMinter(other0.address, overrides);
-  await delfyNftToken.addMinter(other1.address, overrides);
-  await delfyNftToken.addMinter(other2.address, overrides);
-  await delfyNftToken.addMinter(other3.address, overrides);
+  await coterieNftToken.addMinter(other0.address, overrides);
+  await coterieNftToken.addMinter(other1.address, overrides);
+  await coterieNftToken.addMinter(other2.address, overrides);
+  await coterieNftToken.addMinter(other3.address, overrides);
 });
 const advanceBlock = async (times) => {
   for (let i = 0; i < times; i++) {
@@ -145,12 +145,12 @@ describe("Nft marketplace payment", () => {
     takeSnapshot(provider);
     await advanceTime(provider, DELAY());
     await expect(await nftMktplace.connect(other1).closeAuction(1, overrides))
-      .to.emit(nftMktplace, "SplitPayment")
+      .to.emit(nftMktplace, "OwnersPayment")
       .withArgs(1, other0.address, payment);
     revertTime(provider);
   });
   it("support payment distribution for collaborative sales", async () => {
-    await delfyNftToken
+    await coterieNftToken
       .connect(other0)
       .mintWithRoyalty(
         other0.address,
@@ -159,7 +159,7 @@ describe("Nft marketplace payment", () => {
         [BigNumber.from(100)],
         overrides,
       );
-    await delfyNftToken
+    await coterieNftToken
       .connect(other0)
       .approve(nftMktplace.address, 1, overrides);
     const payTo = [
@@ -171,7 +171,7 @@ describe("Nft marketplace payment", () => {
       .connect(other0)
       .createAuction(
         payTo,
-        delfyNftToken.address,
+        coterieNftToken.address,
         1,
         expandToEthers(1).toString(10),
         constants.AddressZero,
@@ -186,12 +186,12 @@ describe("Nft marketplace payment", () => {
     takeSnapshot(provider);
     await advanceTime(provider, DELAY());
     const payment = await nftMktplace.getOwnerPayment(
-      delfyNftToken.address,
+      coterieNftToken.address,
       1,
       expandToEthers(1.5).toString(10),
     );
     await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
-      .to.emit(nftMktplace, "SplitPayment")
+      .to.emit(nftMktplace, "OwnersPayment")
       .withArgs(1, other0.address, payment.div(2))
       .withArgs(1, other1.address, payment.div(4))
       .withArgs(1, other2.address, payment.div(4));
@@ -199,7 +199,7 @@ describe("Nft marketplace payment", () => {
     revertTime(provider);
   });
   it("support royalty distribution for multiple artists", async () => {
-    await delfyNftToken
+    await coterieNftToken
       .connect(other0)
       .mintWithRoyalty(
         other0.address,
@@ -208,7 +208,7 @@ describe("Nft marketplace payment", () => {
         [BigNumber.from(200), BigNumber.from(200), BigNumber.from(200)], //6% in total
         overrides,
       );
-    await delfyNftToken
+    await coterieNftToken
       .connect(other0)
       .approve(nftMktplace.address, 1, overrides);
     const payTo = [
@@ -220,7 +220,7 @@ describe("Nft marketplace payment", () => {
       .connect(other0)
       .createAuction(
         payTo,
-        delfyNftToken.address,
+        coterieNftToken.address,
         1,
         expandToEthers(1).toString(10),
         constants.AddressZero,
@@ -235,7 +235,7 @@ describe("Nft marketplace payment", () => {
     takeSnapshot(provider);
     await advanceTime(provider, DELAY());
     const payment = await nftMktplace.viewRoyaltyPayments(
-      delfyNftToken.address,
+      coterieNftToken.address,
       1,
       expandToEthers(1.5).toString(10),
     );
@@ -249,7 +249,7 @@ describe("Nft marketplace payment", () => {
     revertTime(provider);
   });
   it("calc. refBonus and pay from platform share", async () => {
-    await delfyNftToken
+    await coterieNftToken
       .connect(other0)
       .mintWithRoyalty(
         other0.address,
@@ -258,7 +258,7 @@ describe("Nft marketplace payment", () => {
         [BigNumber.from(200)],
         overrides,
       );
-    await delfyNftToken
+    await coterieNftToken
       .connect(other0)
       .approve(nftMktplace.address, 1, overrides);
     const payTo = [{ to: other0.address, percent: "1000" }];
@@ -266,7 +266,7 @@ describe("Nft marketplace payment", () => {
       .connect(other0)
       .createAuction(
         payTo,
-        delfyNftToken.address,
+        coterieNftToken.address,
         1,
         expandToEthers(1).toString(10),
         constants.AddressZero,
@@ -286,7 +286,7 @@ describe("Nft marketplace payment", () => {
       expandToEthers(1.5).toString(10),
     );
     await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
-      .to.emit(nftMktplace, "ReferralPaid")
+      .to.emit(nftMktplace, "ReferralDue")
       .withArgs(1, wallet.address, payment.refCut, constants.AddressZero);
 
     revertTime(provider);
