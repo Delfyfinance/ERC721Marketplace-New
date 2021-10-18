@@ -248,7 +248,51 @@ describe("Nft marketplace payment", () => {
 
   //   revertTime(provider);
   // });
-  it("calc. refBonus and pay from platform share", async () => {
+  // it("calc. refBonus and pay from platform share", async () => {
+  //   await coterieNftToken
+  //     .connect(other0)
+  //     .mintWithRoyalty(
+  //       other0.address,
+  //       stallionMetadataHash,
+  //       [other0.address],
+  //       [BigNumber.from(200)],
+  //       overrides,
+  //     );
+  //   await coterieNftToken
+  //     .connect(other0)
+  //     .approve(nftMktplace.address, 1, overrides);
+  //   const payTo = [{ to: other0.address, percent: "1000" }];
+  //   await nftMktplace
+  //     .connect(other0)
+  //     .createAuction(
+  //       payTo,
+  //       coterieNftToken.address,
+  //       1,
+  //       expandToEthers(1).toString(10),
+  //       constants.AddressZero,
+  //       overrides,
+  //     );
+  //   await nftMktplace
+  //     .connect(other6)
+  //     .makeBid(1, expandToEthers(1.5).toString(10), {
+  //       ...overrides,
+  //       value: expandToEthers(1.5).toString(10),
+  //     });
+  //   takeSnapshot(provider);
+  //   await advanceTime(provider, DELAY());
+  //   const payment = await nftMktplace.getPlatformCut(
+  //     1,
+  //     other0.address,
+  //     expandToEthers(1.5).toString(10),
+  //   );
+  //   await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
+  //     .to.emit(nftMktplace, "ReferralDue")
+  //     .withArgs(1, wallet.address, payment.refCut, constants.AddressZero)
+  //     .to.emit(nftMktplace, "ServiceFees")
+  //     .withArgs(wallet.address, 1, constants.AddressZero, payment._total);
+  //   revertTime(provider);
+  // });
+  it("zeros refBonus and pay from platform share when refbonus is false", async () => {
     await coterieNftToken
       .connect(other0)
       .mintWithRoyalty(
@@ -278,6 +322,7 @@ describe("Nft marketplace payment", () => {
         ...overrides,
         value: expandToEthers(1.5).toString(10),
       });
+    await nftMktplace.connect(wallet).toggleGiveRef(overrides)
     takeSnapshot(provider);
     await advanceTime(provider, DELAY());
     const payment = await nftMktplace.getPlatformCut(
@@ -285,13 +330,11 @@ describe("Nft marketplace payment", () => {
       other0.address,
       expandToEthers(1.5).toString(10),
     );
+    expect(payment.cutValue).to.equal(payment._total)
     await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
-      .to.emit(nftMktplace, "ReferralDue")
-      .withArgs(1, wallet.address, payment.refCut, constants.AddressZero)
 
       .to.emit(nftMktplace, "ServiceFees")
-      .withArgs(wallet.address, 1, constants.AddressZero, payment._total);
-
+      .withArgs(wallet.address, 1, constants.AddressZero, payment.cutValue);
     revertTime(provider);
   });
 });
