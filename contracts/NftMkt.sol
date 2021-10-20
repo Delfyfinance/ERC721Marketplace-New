@@ -1232,9 +1232,11 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     mapping(uint256 => address) public getRef; // get ref address from auction Id it calls to the CoterieERC721 contract to fetch the content creator referredBy
     mapping(uint256 => PaymentsTo[]) public payTo;
     mapping(uint256 => Bid[])  getBids;
+    mapping(address=> bool) public isCoterieERC721;
 
     uint256[] auctionIds;
     address[] supportedPaymentMethods;
+    address [] public coterieERC721s;
 
     bytes4 private constant _ERC721_RECEIVED = 0x150b7a02;
     uint256 public constant delay = 172_800;
@@ -1243,7 +1245,6 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     IRegistry public ROYALTY_REGISTRY;
     address public pendingAdmin;
     uint256 public changeAdminDelay;
-    address public coterieERC721;
     address payable public platformVault; // for platform fees
     address public admin;
 
@@ -1300,7 +1301,9 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         emit AdminTransferred(address(0), _msgSender());
     }
     
-    
+    receive() external payable {
+        revert("CoterieMarket: You have to make purchase!");
+    }
 
    
     
@@ -1348,10 +1351,13 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         }
 
         if (
-            _token == coterieERC721 && ICoterieERC721(coterieERC721).isMinter(_owner)
+            isCoterieERC721[_token] 
         ) {
-            isMinter[_owner] = true;
-            getRef[auction.id] = ICoterieERC721(_token).referredBy(auction.owner);
+            if(ICoterieERC721(_token).isMinter(_owner)){
+                isMinter[_owner] = true;
+                getRef[auction.id] = ICoterieERC721(_token).referredBy(auction.owner);
+                
+            }
         }
         string memory tokenUri = IERC721Metadata(_token).tokenURI(_tokenId);
         emit AuctionCreated(
@@ -1799,6 +1805,8 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         }
         return total == 1000;
     }
+    
+    
 
  
     /*********************** View Functions  ************************/
@@ -1823,9 +1831,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         return payTo[auctionId];
     }
     
-    receive() external payable {
-        revert("CoterieMarket: You have to make purchase!");
-    }
+    
     
     function getOwnerAuctions(address _creator)
         external
@@ -1924,8 +1930,12 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
     }
 
     function addCoterieERC721(address ERC721Token) external onlyOwner {
-        require(ERC721Token != address(0), "address_0");
-        coterieERC721 = ERC721Token;
+       isCoterieERC721[ERC721Token] = true;
+       coterieERC721s.push(ERC721Token);
+    }
+    
+    function removeCoterieERC721(address ERC721Token) external onlyOwner {
+       isCoterieERC721[ERC721Token] = false;
     }
 
     function updatePlatformCut(uint256 newCut) external onlyOwner {

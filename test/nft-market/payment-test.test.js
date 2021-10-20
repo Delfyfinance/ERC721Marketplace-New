@@ -106,192 +106,200 @@ const advanceBlock = async (times) => {
   }
 };
 describe("Nft marketplace payment", () => {
-  // it("support tokens with no royalty", async () => {
-  //   await nftToken
-  //     .connect(other0)
-  //     .mint(other0.address, diamondMetadataHash, overrides);
-  //   await nftToken.connect(other0).approve(nftMktplace.address, 1, overrides);
-  //   const payTo = [{ to: other0.address, percent: "1000" }];
-  //   await nftMktplace
-  //     .connect(other0)
-  //     .createAuction(
-  //       payTo,
-  //       nftToken.address,
-  //       1,
-  //       expandToEthers(1).toString(10),
-  //       constants.AddressZero,
-  //       overrides,
-  //     );
-  //   await nftMktplace
-  //     .connect(other1)
-  //     .makeBid(1, expandToEthers(1).toString(10), {
-  //       ...overrides,
-  //       value: expandToEthers(1).toString(10),
-  //     });
-  //   expect(
-  //     (
-  //       await nftMktplace.viewRoyaltyPayments(
-  //         nftToken.address,
-  //         1,
-  //         expandToEthers(1).toString(10),
-  //       )
-  //     ).total,
-  //   ).to.eq(0);
-  //   const payment = await nftMktplace.getOwnerPayment(
-  //     nftToken.address,
-  //     1,
-  //     expandToEthers(1).toString(10),
-  //   );
-  //   takeSnapshot(provider);
-  //   await advanceTime(provider, DELAY());
-  //   await expect(await nftMktplace.connect(other1).closeAuction(1, overrides))
-  //     .to.emit(nftMktplace, "OwnersPayment")
-  //     .withArgs(1, other0.address, payment);
-  //   revertTime(provider);
-  // });
-  // it("support payment distribution for collaborative sales", async () => {
-  //   await coterieNftToken
-  //     .connect(other0)
-  //     .mintWithRoyalty(
-  //       other0.address,
-  //       stallionMetadataHash,
-  //       [other0.address],
-  //       [BigNumber.from(100)],
-  //       overrides,
-  //     );
-  //   await coterieNftToken
-  //     .connect(other0)
-  //     .approve(nftMktplace.address, 1, overrides);
-  //   const payTo = [
-  //     { to: other0.address, percent: "500" },
-  //     { to: other1.address, percent: "250" },
-  //     { to: other2.address, percent: "250" },
-  //   ];
-  //   await nftMktplace
-  //     .connect(other0)
-  //     .createAuction(
-  //       payTo,
-  //       coterieNftToken.address,
-  //       1,
-  //       expandToEthers(1).toString(10),
-  //       constants.AddressZero,
-  //       overrides,
-  //     );
-  //   await nftMktplace
-  //     .connect(other6)
-  //     .makeBid(1, expandToEthers(1.5).toString(10), {
-  //       ...overrides,
-  //       value: expandToEthers(1.5).toString(10),
-  //     });
-  //   takeSnapshot(provider);
-  //   await advanceTime(provider, DELAY());
-  //   const payment = await nftMktplace.getOwnerPayment(
-  //     coterieNftToken.address,
-  //     1,
-  //     expandToEthers(1.5).toString(10),
-  //   );
-  //   await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
-  //     .to.emit(nftMktplace, "OwnersPayment")
-  //     .withArgs(1, other0.address, payment.div(2))
-  //     .withArgs(1, other1.address, payment.div(4))
-  //     .withArgs(1, other2.address, payment.div(4));
+  it("support tokens with no royalty", async () => {
+    await nftToken
+      .connect(other0)
+      .mint(other0.address, diamondMetadataHash, overrides);
+    await nftToken.connect(other0).approve(nftMktplace.address, 1, overrides);
+    const payTo = [{ to: other0.address, percent: "1000" }];
+    await nftMktplace
+      .connect(other0)
+      .createAuction(
+        payTo,
+        nftToken.address,
+        1,
+        expandToEthers(1).toString(10),
+        constants.AddressZero,
+        overrides,
+      );
+    await nftMktplace
+      .connect(other1)
+      .makeBid(1, expandToEthers(1).toString(10), {
+        ...overrides,
+        value: expandToEthers(1).toString(10),
+      });
+    expect(
+      (
+        await nftMktplace.viewRoyaltyPayments(
+          nftToken.address,
+          1,
+          expandToEthers(1).toString(10),
+        )
+      ).total,
+    ).to.eq(0);
+    const payment = await nftMktplace.getOwnerPayment(
+      nftToken.address,
+      1,
+      expandToEthers(1).toString(10),
+    );
+    takeSnapshot(provider);
+    await advanceTime(provider, DELAY());
+    await expect(await nftMktplace.connect(other1).closeAuction(1, overrides))
+      .to.emit(nftMktplace, "OwnersPayment")
+      .withArgs(1, other0.address, payment);
+    revertTime(provider);
+    expect(await nftMktplace.admin()).to.eq(wallet.address);
+    expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
+  });
+  it("support payment distribution for collaborative sales", async () => {
+    await coterieNftToken
+      .connect(other0)
+      .mintWithRoyalty(
+        other0.address,
+        stallionMetadataHash,
+        [other0.address],
+        [BigNumber.from(100)],
+        overrides,
+      );
+    await coterieNftToken
+      .connect(other0)
+      .approve(nftMktplace.address, 1, overrides);
+    const payTo = [
+      { to: other0.address, percent: "500" },
+      { to: other1.address, percent: "250" },
+      { to: other2.address, percent: "250" },
+    ];
+    await nftMktplace
+      .connect(other0)
+      .createAuction(
+        payTo,
+        coterieNftToken.address,
+        1,
+        expandToEthers(1).toString(10),
+        constants.AddressZero,
+        overrides,
+      );
+    await nftMktplace
+      .connect(other6)
+      .makeBid(1, expandToEthers(1.5).toString(10), {
+        ...overrides,
+        value: expandToEthers(1.5).toString(10),
+      });
+    takeSnapshot(provider);
+    await advanceTime(provider, DELAY());
+    const payment = await nftMktplace.getOwnerPayment(
+      coterieNftToken.address,
+      1,
+      expandToEthers(1.5).toString(10),
+    );
+    await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
+      .to.emit(nftMktplace, "OwnersPayment")
+      .withArgs(1, other0.address, payment.div(2))
+      .withArgs(1, other1.address, payment.div(4))
+      .withArgs(1, other2.address, payment.div(4));
 
-  //   revertTime(provider);
-  // });
-  // it("support royalty distribution for multiple artists", async () => {
-  //   await coterieNftToken
-  //     .connect(other0)
-  //     .mintWithRoyalty(
-  //       other0.address,
-  //       stallionMetadataHash,
-  //       [other0.address, other1.address, other2.address],
-  //       [BigNumber.from(200), BigNumber.from(200), BigNumber.from(200)], //6% in total
-  //       overrides,
-  //     );
-  //   await coterieNftToken
-  //     .connect(other0)
-  //     .approve(nftMktplace.address, 1, overrides);
-  //   const payTo = [
-  //     { to: other0.address, percent: "500" },
-  //     { to: other1.address, percent: "250" },
-  //     { to: other2.address, percent: "250" },
-  //   ];
-  //   await nftMktplace
-  //     .connect(other0)
-  //     .createAuction(
-  //       payTo,
-  //       coterieNftToken.address,
-  //       1,
-  //       expandToEthers(1).toString(10),
-  //       constants.AddressZero,
-  //       overrides,
-  //     );
-  //   await nftMktplace
-  //     .connect(other6)
-  //     .makeBid(1, expandToEthers(1.5).toString(10), {
-  //       ...overrides,
-  //       value: expandToEthers(1.5).toString(10),
-  //     });
-  //   takeSnapshot(provider);
-  //   await advanceTime(provider, DELAY());
-  //   const payment = await nftMktplace.viewRoyaltyPayments(
-  //     coterieNftToken.address,
-  //     1,
-  //     expandToEthers(1.5).toString(10),
-  //   );
-  //   console.log("RoyaltyPaid total: ", payment.total.toString())
-  //   await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
-  //     .to.emit(nftMktplace, "RoyaltyPaid")
-  //     .withArgs(1, other0.address, payment.total.div(3), constants.AddressZero)
-  //     .withArgs(1, other1.address, payment.total.div(3), constants.AddressZero)
-  //     .withArgs(1, other2.address, payment.total.div(3), constants.AddressZero);
+    revertTime(provider);
+    expect(await nftMktplace.admin()).to.eq(wallet.address);
+    expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
+  });
+  it("support royalty distribution for multiple artists", async () => {
+    await coterieNftToken
+      .connect(other0)
+      .mintWithRoyalty(
+        other0.address,
+        stallionMetadataHash,
+        [other0.address, other1.address, other2.address],
+        [BigNumber.from(200), BigNumber.from(200), BigNumber.from(200)], //6% in total
+        overrides,
+      );
+    await coterieNftToken
+      .connect(other0)
+      .approve(nftMktplace.address, 1, overrides);
+    const payTo = [
+      { to: other0.address, percent: "500" },
+      { to: other1.address, percent: "250" },
+      { to: other2.address, percent: "250" },
+    ];
+    await nftMktplace
+      .connect(other0)
+      .createAuction(
+        payTo,
+        coterieNftToken.address,
+        1,
+        expandToEthers(1).toString(10),
+        constants.AddressZero,
+        overrides,
+      );
+    await nftMktplace
+      .connect(other6)
+      .makeBid(1, expandToEthers(1.5).toString(10), {
+        ...overrides,
+        value: expandToEthers(1.5).toString(10),
+      });
+    takeSnapshot(provider);
+    await advanceTime(provider, DELAY());
+    const payment = await nftMktplace.viewRoyaltyPayments(
+      coterieNftToken.address,
+      1,
+      expandToEthers(1.5).toString(10),
+    );
+    console.log("RoyaltyPaid total: ", payment.total.toString())
+    await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
+      .to.emit(nftMktplace, "RoyaltyPaid")
+      .withArgs(1, other0.address, payment.total.div(3), constants.AddressZero)
+      .withArgs(1, other1.address, payment.total.div(3), constants.AddressZero)
+      .withArgs(1, other2.address, payment.total.div(3), constants.AddressZero);
 
-  //   revertTime(provider);
-  // });
-  // it("calc. refBonus and pay from platform share", async () => {
-  //   await coterieNftToken
-  //     .connect(other0)
-  //     .mintWithRoyalty(
-  //       other0.address,
-  //       stallionMetadataHash,
-  //       [other0.address],
-  //       [BigNumber.from(200)],
-  //       overrides,
-  //     );
-  //   await coterieNftToken
-  //     .connect(other0)
-  //     .approve(nftMktplace.address, 1, overrides);
-  //   const payTo = [{ to: other0.address, percent: "1000" }];
-  //   await nftMktplace
-  //     .connect(other0)
-  //     .createAuction(
-  //       payTo,
-  //       coterieNftToken.address,
-  //       1,
-  //       expandToEthers(1).toString(10),
-  //       constants.AddressZero,
-  //       overrides,
-  //     );
-  //   await nftMktplace
-  //     .connect(other6)
-  //     .makeBid(1, expandToEthers(1.5).toString(10), {
-  //       ...overrides,
-  //       value: expandToEthers(1.5).toString(10),
-  //     });
-  //   takeSnapshot(provider);
-  //   await advanceTime(provider, DELAY());
-  //   const payment = await nftMktplace.getPlatformCut(
-  //     1,
-  //     other0.address,
-  //     expandToEthers(1.5).toString(10),
-  //   );
-  //   await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
-  //     .to.emit(nftMktplace, "ReferralDue")
-  //     .withArgs(1, wallet.address, payment.refCut, constants.AddressZero)
-  //     .to.emit(nftMktplace, "ServiceFees")
-  //     .withArgs(wallet.address, 1, constants.AddressZero, payment._total);
-  //   revertTime(provider);
-  // });
+    revertTime(provider);
+    expect(await nftMktplace.admin()).to.eq(wallet.address);
+    expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
+  });
+  it("calc. refBonus and pay from platform share", async () => {
+    await coterieNftToken
+      .connect(other0)
+      .mintWithRoyalty(
+        other0.address,
+        stallionMetadataHash,
+        [other0.address],
+        [BigNumber.from(200)],
+        overrides,
+      );
+    await coterieNftToken
+      .connect(other0)
+      .approve(nftMktplace.address, 1, overrides);
+    const payTo = [{ to: other0.address, percent: "1000" }];
+    await nftMktplace
+      .connect(other0)
+      .createAuction(
+        payTo,
+        coterieNftToken.address,
+        1,
+        expandToEthers(1).toString(10),
+        constants.AddressZero,
+        overrides,
+      );
+    await nftMktplace
+      .connect(other6)
+      .makeBid(1, expandToEthers(1.5).toString(10), {
+        ...overrides,
+        value: expandToEthers(1.5).toString(10),
+      });
+    takeSnapshot(provider);
+    await advanceTime(provider, DELAY());
+    const payment = await nftMktplace.getPlatformCut(
+      1,
+      other0.address,
+      expandToEthers(1.5).toString(10),
+    );
+    await expect(nftMktplace.connect(other0).closeAuction(1, overrides))
+      .to.emit(nftMktplace, "ReferralDue")
+      .withArgs(1, wallet.address, payment.refCut, constants.AddressZero)
+      .to.emit(nftMktplace, "ServiceFees")
+      .withArgs(wallet.address, 1, constants.AddressZero, payment._total);
+    revertTime(provider);
+    expect(await nftMktplace.admin()).to.eq(wallet.address);
+    expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
+  });
   it("zeros refBonus and pay from platform share when refbonus is false", async () => {
     await coterieNftToken
       .connect(other0)
@@ -336,5 +344,7 @@ describe("Nft marketplace payment", () => {
       .to.emit(nftMktplace, "ServiceFees")
       .withArgs(wallet.address, 1, constants.AddressZero, payment.cutValue);
     revertTime(provider);
+    expect(await nftMktplace.admin()).to.eq(wallet.address);
+    expect(await nftMktplace.pendingAdmin()).to.eq(constants.AddressZero);
   });
 });

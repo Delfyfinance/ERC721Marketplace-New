@@ -39,8 +39,8 @@
       ]
     },
     "C:\\Users\\Samue\\OneDrive\\studiocode\\delfyproject\\NFTs\\ERC721Marketplace-New\\contracts\\NftMkt.sol": {
-      "lastModificationDate": 1634587961798,
-      "contentHash": "e00cc19fce7dec8a778863050f0e01f6",
+      "lastModificationDate": 1634751689799,
+      "contentHash": "57c11549c3f01a8c2dd33a89aba2f48f",
       "sourceName": "contracts/NftMkt.sol",
       "solcConfig": {
         "version": "0.6.12",
