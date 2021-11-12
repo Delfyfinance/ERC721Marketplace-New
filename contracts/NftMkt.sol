@@ -1082,9 +1082,10 @@ interface IERC721MarketPlace {
 
     function closeAuction(uint256 _auctionId) external payable returns (bool);
 
-    function updateBasePrice(uint256 _auctionId, uint256 _newBaseFees)
-        external
-        returns (bool);
+   function updateBasePriceAndPaymentMethod(uint256 _auctionId, uint256 _newBasePrice, address newPaymentMtd)
+        external returns(bool);
+        
+
 
     
 
@@ -1093,38 +1094,30 @@ interface IERC721MarketPlace {
         uint256 id,
         address token,
         uint256 tokenId,
-        string tokenUri,
         uint256 _basePrice,
         address paymentMethod
     );
     event Cancelled(uint256 id, address token, uint256 _tokenId);
+    event UpdatePayTo(uint256 auctionId, address to, uint256 share);
     event BidMade(
         address bidder,
         uint256 id,
         address token,
         uint256 tokenId,
-        uint256 bidValue
+        uint256 bidValue,
+        uint256 newClosing
     );
+    event OutBid(address lBidder, uint256 auctionId, uint256 lValue, address paymentMethod);
     event Executed(
         uint256 auctionId,
         address token,
         uint256 tokenId,
         uint256 ownerPayment,
-        uint256 total
+        uint256 total,
+        uint256 closingValue
     );
-    event UpdatePaymentMethod(
-        uint256 auctionId,
-        address oldPaymentMtd,
-        address newPaymentMtd
-    );
-    event PriceUpdated(uint256 auctionId, uint256 oldPrice, uint256 newPrice);
-    event FeesUpdated(
-        uint256 auctionId,
-        address token,
-        uint256 tokenId,
-        uint256 oldFees,
-        uint256 newFees
-    );
+    event PriceAndPaymentMethodUpdated(uint256 auctionId, uint256 basePrice, address paymentMethod);
+  
 
     event OwnersPayment(uint256 id, address to, uint256 value);
      event ServiceFees(address vault, uint256 auctionId, address paymtMethod, uint256 serviceAndRef);
@@ -1314,7 +1307,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         uint256 _tokenId,
         uint256 _basePrice,
         address _paymentMethod
-    ) public override whenNotPaused {
+    ) external override whenNotPaused {
         IERC721 token = IERC721(_token);
         Auction storage auction;
         require(
@@ -1346,9 +1339,7 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         auctionIds.push(auction.id);
         ownerAuctions[_msgSender()].push(auction.id);
         getAuction[auction.id] = auction;
-        for (uint256 i = 0; i < paymentsTo.length; i++) {
-            payTo[auction.id].push(paymentsTo[i]);
-        }
+         _updatePayTo(auction.id, paymentsTo);
 
         if (
             isCoterieERC721[_token] 
@@ -1359,16 +1350,30 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
                 
             }
         }
-        string memory tokenUri = IERC721Metadata(_token).tokenURI(_tokenId);
         emit AuctionCreated(
             _msgSender(),
             auction.id,
             auction.token,
             auction.tokenId,
-            tokenUri,
             auction.basePrice,
             _paymentMethod
         );
+    }
+    // event UpdatePayTo(uint256 auctionId, address to, uint256 share);
+    
+    function _updatePayTo(uint256 auctionId, PaymentsTo[] memory paymentsTo) internal {
+        
+         for (uint256 i = 0; i < paymentsTo.length; i++) {
+            payTo[auctionId].push(paymentsTo[i]);
+            emit UpdatePayTo(auctionId, paymentsTo[i].to, paymentsTo[i].percent);
+        }
+        
+        
+    }
+    
+    function updatePayTo(uint256 auctionId, PaymentsTo[]memory paymentsTo) external {
+        validatePayTo(paymentsTo);
+        _updatePayTo(auctionId, paymentsTo);
     }
     
      function makeBid(uint256 _id, uint256 bidValue)
@@ -1411,6 +1416,8 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
                     "CoterieMarket: Bid_value_must_be_>current_bid_value"
                 );
                 EthTransferHelper(bids[bids.length - 1].bidder, bids[bids.length - 1].currentBid);
+                emit  OutBid(bids[bids.length - 1].bidder, _id, bids[bids.length - 1].currentBid, address(0));
+                
             } else {
                 require(
                     bidValue >=
@@ -1428,6 +1435,8 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
                     bids[bids.length - 1].bidder,
                     bids[bids.length - 1].currentBid
                 );
+                
+                emit  OutBid(bids[bids.length - 1].bidder, _id, bids[bids.length - 1].currentBid, _auction.paymentMethod);
             }
 
             if (
@@ -1453,22 +1462,13 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
             _auction.id,
             _auction.token,
             _auction.tokenId,
-            bidValue
+            bidValue,
+            _auction.closedAt
         );
     }
 
     
-    function updatePaymentMethod(uint256 auctionId, address newPaymentMtd)
-        external
-        whenNotPaused
-        onlyAuctionOwner(auctionId)
-        onlyBeforeBid(auctionId)
-    {
-        Auction storage _auction = getAuction[auctionId];
-        address oldPaymentMtd = _auction.paymentMethod;
-        _auction.paymentMethod = newPaymentMtd;
-        emit UpdatePaymentMethod(auctionId, oldPaymentMtd, newPaymentMtd);
-    }
+   
 
     function cancelAuction(uint256 _auctionId)
         external
@@ -1598,25 +1598,26 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
             auction.token,
             auction.tokenId,
             ownerPayment,
-            platformAndRefBonus
+            platformAndRefBonus,
+            bids[bids.length - 1].currentBid
         );
         return true;
     }
-
     
-
-    function updateBasePrice(uint256 _auctionId, uint256 _newBasePrice)
+    
+    
+    function updateBasePriceAndPaymentMethod(uint256 _auctionId, uint256 _newBasePrice, address newPaymentMtd)
         external
-        override
         whenNotPaused
         onlyAuctionOwner(_auctionId)
         onlyBeforeBid(_auctionId)
+        override
         returns (bool)
     {
         Auction storage _auction = getAuction[_auctionId];
-        uint256 oldPrice = _auction.basePrice;
         _auction.basePrice = _newBasePrice;
-        emit PriceUpdated(_auction.id, oldPrice, _auction.basePrice);
+        _auction.paymentMethod = newPaymentMtd;
+        emit PriceAndPaymentMethodUpdated(_auction.id, _newBasePrice, newPaymentMtd);
         return true;
     }
 
@@ -1845,29 +1846,29 @@ contract ERC721Marketplace is ReentrancyGuard, IERC721MarketPlace {
         return auctionIds;
     }
 
-    function getOwnerTokenIds(address _owner, address _token)
-        public
-        view
-        returns (uint256[] memory ownerTokens)
-    {
-        IERC721Enumerable token = IERC721Enumerable(_token);
-        uint256 tokenCount = token.balanceOf(_owner);
-        if (tokenCount == 0) {
-            // Return an empty array
-            return new uint256[](0);
-        } else {
-            uint256[] memory result = new uint256[](tokenCount);
-            uint256 totalSupply = token.totalSupply();
-            uint256 resultIndex = 0;
-            for (uint256 tokenId = 1; tokenId <= totalSupply; tokenId++) {
-                if (token.ownerOf(tokenId) == _owner) {
-                    result[resultIndex] = tokenId;
-                    resultIndex++;
-                }
-            }
-            return result;
-        }
-    }
+    // function getOwnerTokenIds(address _owner, address _token)
+    //     public
+    //     view
+    //     returns (uint256[] memory ownerTokens)
+    // {
+    //     IERC721Enumerable token = IERC721Enumerable(_token);
+    //     uint256 tokenCount = token.balanceOf(_owner);
+    //     if (tokenCount == 0) {
+    //         // Return an empty array
+    //         return new uint256[](0);
+    //     } else {
+    //         uint256[] memory result = new uint256[](tokenCount);
+    //         uint256 totalSupply = token.totalSupply();
+    //         uint256 resultIndex = 0;
+    //         for (uint256 tokenId = 1; tokenId <= totalSupply; tokenId++) {
+    //             if (token.ownerOf(tokenId) == _owner) {
+    //                 result[resultIndex] = tokenId;
+    //                 resultIndex++;
+    //             }
+    //         }
+    //         return result;
+    //     }
+    // }
 
     /****************************** only admin Restricted Functions **************************************/
     

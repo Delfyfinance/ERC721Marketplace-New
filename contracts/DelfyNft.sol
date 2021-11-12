@@ -2285,6 +2285,7 @@ interface IERC721Royalties {
 contract CoterieNFT is ERC721, Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
+    using Address for address;
 
     mapping(address => bool) public isMinter;
     mapping(address => address) public referredBy; // mapping newArtist to his/her referral
@@ -2297,19 +2298,14 @@ contract CoterieNFT is ERC721, Ownable {
         bytes4(keccak256("getRoyalties(uint256)"));
     Counters.Counter private _tokenIds;
 
-    event MinterAdded(address indexed prevMinter, address indexed newMinter);
+    event MinterAdded(address indexed existingMinter, address indexed newMinter);
     event RestrictMinter(address indexed sender, address indexed minter);
     event MinterAddressUpdated(
         address indexed oldAddress,
         address indexed newAddress
     );
     event RestoreMinter(address indexed sender, address indexed minter);
-    event RecievedRoyalties(
-        address indexed creator,
-        address indexed buyer,
-        uint256 indexed amount
-    );
-
+   
     modifier onlyMinter() {
         require(isMinter[_msgSender()], "only minter");
         _;
@@ -2338,9 +2334,13 @@ contract CoterieNFT is ERC721, Ownable {
         );
         _;
     }
+    modifier onlyEOA (address account){
+        require(!Address.isContract(account), "CoterieNFT: Only EOA");
+        _;
+    }
 
     constructor() ERC721("Delfy NFT", "DelfyNFT") {
-        _setBaseURI("ipfs.io/ipfs/");
+        _setBaseURI("");
         _registerInterface(_INTERFACE_ID_ERC721ROYALTIES);
     }
 
@@ -2371,6 +2371,7 @@ contract CoterieNFT is ERC721, Ownable {
     )
         external
         onlyMinter
+        onlyEOA(_msgSender())
         returns (uint256)
     {
         _tokenIds.increment();
@@ -2390,6 +2391,7 @@ contract CoterieNFT is ERC721, Ownable {
         uint256[] calldata royaltyShares) external
         isValidRoyalty(royaltyAddrs, royaltyShares)
         onlyMinter
+        onlyEOA(_msgSender())
         returns (uint256){
             
              _tokenIds.increment();
@@ -2432,7 +2434,7 @@ contract CoterieNFT is ERC721, Ownable {
         _addMinter(_minter, payable(owner()));
     }
 
-    function _addMinter(address _minter, address payable _referrer) internal {
+    function _addMinter(address _minter, address payable _referrer) onlyEOA(_minter) internal {
         require(_minter != address(0), "address_0");
         require(!isMinter[_minter], "minter exists");
 
@@ -2473,4 +2475,5 @@ contract CoterieNFT is ERC721, Ownable {
         _restrictMinter(_msgSender(), _msgSender());
         emit MinterAddressUpdated(_msgSender(), newAddr);
     }
+   
 }
